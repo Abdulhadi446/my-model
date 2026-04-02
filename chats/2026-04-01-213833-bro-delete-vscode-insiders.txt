@@ -1,0 +1,60 @@
+ ▐▛███▜▌   Claude Code v2.1.89
+▝▜█████▛▘  kimi-k2.5:cloud · API Usage Billing
+  ▘▘ ▝▝    /home/abdulhadi
+
+❯ bro delete vscode insiders                                                    
+
+● I can help you uninstall VS Code Insiders. Let me check how it's installed on
+  your system.
+
+● Bash(which code-insiders && code-insiders --version)
+  ⎿  /usr/bin/code-insiders
+     1.114.0-insider
+     bc8f9ef3d6b1398247324a586ef8d989f2111460
+     x64
+
+● Bash(dpkg -l | grep -i code-insiders 2>/dev/null || rpm -qa | grep -i
+      code-insiders 2>/dev/null || true)
+  ⎿  ii  code-insiders                                  1.114.0-1774501700
+                           amd64        Code editing. Redefined.
+
+● It's installed via dpkg (apt). You can uninstall it with:
+
+  sudo apt remove code-insiders
+
+  To also remove config files:
+  sudo apt purge code-insiders
+
+  Want me to run the purge command for you?
+
+❯ yes                                                                           
+
+● Bash(sudo apt purge -y code-insiders)
+  ⎿  Error: PreToolUse:Bash hook error: 
+     [${CLAUDE_PLUGIN_ROOT}/hooks/bash-guard.sh]: BLOCKED: sudo requires 
+     explicit approval - use ! to override
+
+● Your bash guard blocked the sudo command. Run it yourself:
+
+  ! sudo apt purge -y code-insiders
+
+❯ abdulhadi@abdulhadi-HP-ProBook-640-G4:~$ sudo apt purge -y code-insiders      
+[sudo] password for abdulhadi:                                                  
+Reading package lists... Done                                                   
+Building dependency tree... Done                                                
+Reading state information... Done                                               
+The following packages will be REMOVED:                                         
+  code-insiders*                                                                
+0 upgraded, 0 newly installed, 1 to remove and 69 not upgraded.                 
+After this operation, 576 MB disk space will be freed.                          
+(Reading database ... 457540 files and directories currently installed.)        
+Removing code-insiders (1.114.0-1774501700) ...                                 
+Processing triggers for gnome-menus (3.36.0-1.1ubuntu3) ...                     
+Processing triggers for shared-mime-info (2.4-4) ...                            
+Processing triggers for desktop-file-utils (0.27-2build1) ...                   
+(Reading database ... 451742 files and directories currently installed.)        
+Purging configuration files for code-insiders (1.114.0-1774501700) ...          
+abdulhadi@abdulhadi-HP-ProBook-640-G4:~$                                        
+                                                                                
+
+● Done. VS Code Insiders removed, 576 MB freed up.

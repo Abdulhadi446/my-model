@@ -1,0 +1,48 @@
+ ▐▛███▜▌   Claude Code v2.1.89
+▝▜█████▛▘  kimi-k2.5:cloud · API Usage Billing
+  ▘▘ ▝▝    /home/abdulhadi
+
+❯ bro delete vscode                                                             
+
+● I'll help you uninstall VS Code from your Linux system. Let me check how it's
+  installed and remove it.
+
+● Bash(which code && echo "---" && dpkg -l | grep -i code || rpm -q code
+      2>/dev/null || echo "Not found in package manager")
+  ⎿  /usr/bin/code
+     ---
+     ii  amd64-microcode                                3.20250311.1ubuntu0
+     … +251 lines (ctrl+o to expand)
+
+● VS Code is installed via dpkg. I'll remove it and clean up the config.
+
+● Bash(sudo apt remove -y code)
+  ⎿  Error: PreToolUse:Bash hook error: 
+     [${CLAUDE_PLUGIN_ROOT}/hooks/bash-guard.sh]: BLOCKED: sudo requires 
+     explicit approval - use ! to override
+
+● Run this to uninstall VS Code:
+
+  ! sudo apt remove -y code
+
+  Then clean up the config with:
+  ! rm -rf ~/.config/Code ~/.vscode
+
+❯ abdulhadi@abdulhadi-HP-ProBook-640-G4:~$ sudo apt remove -y code              
+Reading package lists... Done                                                   
+Building dependency tree... Done                                                
+Reading state information... Done                                               
+The following packages will be REMOVED:                                         
+  code                                                                          
+0 upgraded, 0 newly installed, 1 to remove and 68 not upgraded.                 
+After this operation, 555 MB disk space will be freed.                          
+(Reading database ... 451742 files and directories currently installed.)        
+Removing code (1.113.0-1774364744) ...                                          
+Processing triggers for gnome-menus (3.36.0-1.1ubuntu3) ...                     
+Processing triggers for shared-mime-info (2.4-4) ...                            
+Processing triggers for desktop-file-utils (0.27-2build1) ...                   
+abdulhadi@abdulhadi-HP-ProBook-640-G4:~$ rm -rf ~/.config/Code ~/.vscode        
+abdulhadi@abdulhadi-HP-ProBook-640-G4:~$                                        
+                                                                                
+
+● Done. VS Code is gone - freed up 555 MB.

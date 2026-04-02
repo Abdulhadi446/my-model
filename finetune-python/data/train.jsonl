@@ -1,0 +1,3 @@
+{"instruction":"Summarize the text in one sentence.","input":"Python is a popular programming language used in data science, web development, and automation.","response":"Python is a widely used language for data science, web apps, and automation."}
+{"instruction":"Translate to Spanish.","input":"Machine learning helps computers find patterns in data.","response":"El aprendizaje automatico ayuda a las computadoras a encontrar patrones en los datos."}
+{"instruction":"Write a polite email subject line for a meeting request.","response":"Request to Schedule a Short Meeting"}
