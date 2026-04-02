@@ -29,6 +29,19 @@ Optional key:
 
 Example is already in `data/train.jsonl`.
 
+### Build dataset from your chat logs
+
+If you want to train on files in `/workspaces/codespaces-jupyter/chats`:
+
+```bash
+cd /workspaces/codespaces-jupyter/finetune-python
+python prepare_chats_dataset.py \
+  --chats_dir ../chats \
+  --output data/train_from_chats.jsonl
+```
+
+Then train with `--dataset_path data/train_from_chats.jsonl`.
+
 ## 3) Start fine-tuning
 
 ```bash
@@ -92,6 +105,33 @@ Tips:
 - Use `--load_in_4bit` if VRAM is tight.
 - Remove `--load_in_4bit` for higher precision if you have enough VRAM.
 - Use `--full_finetune` only if you have large GPU memory.
+
+## 3d) One-script Qwen 7B pipeline (install + dataset + train + benchmark)
+
+This runs everything in one command:
+- installs dependencies
+- builds dataset from `../chats`
+- fine-tunes `Qwen/Qwen2.5-Coder-7B-Instruct` with LoRA
+- benchmarks base model vs fine-tuned model
+
+```bash
+python train_qwen7b_end_to_end.py \
+  --model_name Qwen/Qwen2.5-Coder-7B-Instruct \
+  --chats_dir ../chats \
+  --dataset_path data/train_from_chats.jsonl \
+  --output_dir outputs/qwen7b-lora \
+  --num_train_epochs 1 \
+  --per_device_train_batch_size 1 \
+  --gradient_accumulation_steps 8
+```
+
+Outputs:
+- adapter: `outputs/qwen7b-lora`
+- benchmark report: `outputs/qwen7b-lora/benchmark_summary.json`
+
+Notes:
+- Use a CUDA GPU environment (Colab/Kaggle/RunPod) for 7B training.
+- Add `--skip_install` if your environment is already prepared.
 
 ## 4) Where output goes
 - Adapter + tokenizer are saved in `outputs/tinyllama-lora`
