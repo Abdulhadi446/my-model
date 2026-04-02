@@ -96,6 +96,14 @@ def benchmark_model(model, tokenizer, eval_rows, max_new_tokens=128):
     if tokenizer.pad_token is None:
         tokenizer.pad_token = tokenizer.eos_token
 
+    # Some model configs persist sampling-only params that trigger warnings when
+    # we do greedy decoding. Clearing them keeps benchmark logs clean.
+    if getattr(model, "generation_config", None) is not None:
+        model.generation_config.do_sample = False
+        for key in ("temperature", "top_p", "top_k"):
+            if hasattr(model.generation_config, key):
+                setattr(model.generation_config, key, None)
+
     f1_scores = []
     total_gen_tokens = 0
     total_seconds = 0.0
@@ -168,7 +176,7 @@ def load_base_model(model_name, load_in_4bit, max_memory=None):
 
     model = AutoModelForCausalLM.from_pretrained(
         model_name,
-        torch_dtype=dtype,
+        dtype=dtype,
         quantization_config=quant_config,
         device_map="auto" if torch.cuda.is_available() else None,
         max_memory=max_memory,
@@ -277,15 +285,23 @@ def main():
     )
 
     print("Starting LoRA fine-tuning...")
-    trainer = SFTTrainer(
-        model=base_model,
-        tokenizer=tokenizer,
-        train_dataset=train_dataset,
-        dataset_text_field="text",
-        peft_config=peft_config,
-        args=training_args,
-        max_seq_length=args.max_seq_length,
-    )
+    trainer_kwargs = {
+        "model": base_model,
+        "tokenizer": tokenizer,
+        "train_dataset": train_dataset,
+        "dataset_text_field": "text",
+        "peft_config": peft_config,
+        "args": training_args,
+    }
+
+    # TRL versions differ: newer releases removed max_seq_length from
+    # SFTTrainer.__init__. Try legacy signature first, then fallback for newer.
+    try:
+        trainer = SFTTrainer(max_seq_length=args.max_seq_length, **trainer_kwargs)
+    except TypeError as exc:
+        if "max_seq_length" not in str(exc):
+            raise
+        trainer = SFTTrainer(**trainer_kwargs)
     trainer.train()
     trainer.save_model(args.output_dir)
     tokenizer.save_pretrained(args.output_dir)
