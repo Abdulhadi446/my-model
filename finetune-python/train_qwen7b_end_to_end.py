@@ -1,4 +1,5 @@
 import argparse
+import inspect
 import json
 import random
 import subprocess
@@ -287,21 +288,25 @@ def main():
     print("Starting LoRA fine-tuning...")
     trainer_kwargs = {
         "model": base_model,
-        "tokenizer": tokenizer,
         "train_dataset": train_dataset,
-        "dataset_text_field": "text",
         "peft_config": peft_config,
         "args": training_args,
     }
 
-    # TRL versions differ: newer releases removed max_seq_length from
-    # SFTTrainer.__init__. Try legacy signature first, then fallback for newer.
-    try:
-        trainer = SFTTrainer(max_seq_length=args.max_seq_length, **trainer_kwargs)
-    except TypeError as exc:
-        if "max_seq_length" not in str(exc):
-            raise
-        trainer = SFTTrainer(**trainer_kwargs)
+    # TRL has changed the SFTTrainer signature across releases.
+    # Build kwargs dynamically from the installed version.
+    sft_params = set(inspect.signature(SFTTrainer.__init__).parameters.keys())
+    if "tokenizer" in sft_params:
+        trainer_kwargs["tokenizer"] = tokenizer
+    elif "processing_class" in sft_params:
+        trainer_kwargs["processing_class"] = tokenizer
+
+    if "dataset_text_field" in sft_params:
+        trainer_kwargs["dataset_text_field"] = "text"
+    if "max_seq_length" in sft_params:
+        trainer_kwargs["max_seq_length"] = args.max_seq_length
+
+    trainer = SFTTrainer(**trainer_kwargs)
     trainer.train()
     trainer.save_model(args.output_dir)
     tokenizer.save_pretrained(args.output_dir)
