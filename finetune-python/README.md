@@ -136,6 +136,29 @@ Notes:
 ## 4) Where output goes
 - Adapter + tokenizer are saved in `outputs/tinyllama-lora`
 
+## 5) Chat with the model
+
+Chat with base model:
+
+```bash
+python chat_with_model.py \
+  --model_name Qwen/Qwen2.5-Coder-7B-Instruct \
+  --load_in_4bit
+```
+
+Chat with your fine-tuned adapter:
+
+```bash
+python chat_with_model.py \
+  --model_name Qwen/Qwen2.5-Coder-7B-Instruct \
+  --adapter_path outputs/qwen7b-lora \
+  --load_in_4bit
+```
+
+Inside chat:
+- Type your prompt and press Enter
+- Type `/exit` to quit
+
 ## Notes
 - GPU is strongly recommended for speed.
 - Start with a small model and small dataset to validate the pipeline.
