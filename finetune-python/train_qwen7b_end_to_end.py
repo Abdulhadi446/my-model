@@ -211,7 +211,34 @@ def parse_args():
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--skip_install", action="store_true")
     parser.add_argument("--no_4bit", action="store_true")
+    parser.add_argument(
+        "--precision_mode",
+        choices=["auto", "safe", "fp16", "bf16"],
+        default="auto",
+        help=(
+            "Training precision mode. auto tries fast modes then falls back to safe. "
+            "safe disables AMP for maximum compatibility."
+        ),
+    )
     return parser.parse_args()
+
+
+def precision_plan(mode: str):
+    if not torch.cuda.is_available():
+        return [("safe", False, False)]
+
+    if mode == "safe":
+        return [("safe", False, False)]
+    if mode == "fp16":
+        return [("fp16", True, False), ("safe", False, False)]
+    if mode == "bf16":
+        return [("bf16", False, True), ("safe", False, False)]
+
+    # auto mode: try best available mixed precision, then safe fallback.
+    supports_bf16 = bool(getattr(torch.cuda, "is_bf16_supported", lambda: False)())
+    if supports_bf16:
+        return [("bf16", False, True), ("fp16", True, False), ("safe", False, False)]
+    return [("fp16", True, False), ("safe", False, False)]
 
 
 def main():
@@ -270,44 +297,69 @@ def main():
         target_modules=["q_proj", "k_proj", "v_proj", "o_proj", "gate_proj", "up_proj", "down_proj"],
     )
 
-    training_args = TrainingArguments(
-        output_dir=args.output_dir,
-        num_train_epochs=args.num_train_epochs,
-        per_device_train_batch_size=args.per_device_train_batch_size,
-        gradient_accumulation_steps=args.gradient_accumulation_steps,
-        learning_rate=args.learning_rate,
-        logging_steps=args.logging_steps,
-        save_steps=args.save_steps,
-        save_total_limit=2,
-        fp16=torch.cuda.is_available(),
-        bf16=False,
-        report_to="none",
-        remove_unused_columns=False,
-    )
-
     print("Starting LoRA fine-tuning...")
-    trainer_kwargs = {
-        "model": base_model,
-        "train_dataset": train_dataset,
-        "peft_config": peft_config,
-        "args": training_args,
-    }
-
-    # TRL has changed the SFTTrainer signature across releases.
-    # Build kwargs dynamically from the installed version.
     sft_params = set(inspect.signature(SFTTrainer.__init__).parameters.keys())
-    if "tokenizer" in sft_params:
-        trainer_kwargs["tokenizer"] = tokenizer
-    elif "processing_class" in sft_params:
-        trainer_kwargs["processing_class"] = tokenizer
 
-    if "dataset_text_field" in sft_params:
-        trainer_kwargs["dataset_text_field"] = "text"
-    if "max_seq_length" in sft_params:
-        trainer_kwargs["max_seq_length"] = args.max_seq_length
+    train_error = None
+    trainer = None
+    for mode_name, use_fp16, use_bf16 in precision_plan(args.precision_mode):
+        print(f"Training attempt with precision mode: {mode_name}")
+        training_args = TrainingArguments(
+            output_dir=args.output_dir,
+            num_train_epochs=args.num_train_epochs,
+            per_device_train_batch_size=args.per_device_train_batch_size,
+            gradient_accumulation_steps=args.gradient_accumulation_steps,
+            learning_rate=args.learning_rate,
+            logging_steps=args.logging_steps,
+            save_steps=args.save_steps,
+            save_total_limit=2,
+            fp16=use_fp16,
+            bf16=use_bf16,
+            report_to="none",
+            remove_unused_columns=False,
+        )
 
-    trainer = SFTTrainer(**trainer_kwargs)
-    trainer.train()
+        trainer_kwargs = {
+            "model": base_model,
+            "train_dataset": train_dataset,
+            "peft_config": peft_config,
+            "args": training_args,
+        }
+        if "tokenizer" in sft_params:
+            trainer_kwargs["tokenizer"] = tokenizer
+        elif "processing_class" in sft_params:
+            trainer_kwargs["processing_class"] = tokenizer
+
+        if "dataset_text_field" in sft_params:
+            trainer_kwargs["dataset_text_field"] = "text"
+        if "max_seq_length" in sft_params:
+            trainer_kwargs["max_seq_length"] = args.max_seq_length
+
+        try:
+            trainer = SFTTrainer(**trainer_kwargs)
+            trainer.train()
+            train_error = None
+            break
+        except Exception as exc:
+            train_error = exc
+            msg = str(exc)
+            can_fallback = (
+                "_amp_foreach_non_finite_check_and_unscale_cuda" in msg
+                or "not implemented for 'BFloat16'" in msg
+                or "not implemented for 'Half'" in msg
+                or "Attempting to unscale" in msg
+                or "CUDA error" in msg
+                or "out of memory" in msg.lower()
+            )
+            if not can_fallback:
+                raise
+            print(f"Precision mode {mode_name} failed: {exc}")
+            if torch.cuda.is_available():
+                torch.cuda.empty_cache()
+
+    if train_error is not None:
+        raise train_error
+
     trainer.save_model(args.output_dir)
     tokenizer.save_pretrained(args.output_dir)
 
