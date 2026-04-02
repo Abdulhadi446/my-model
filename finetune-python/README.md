@@ -155,6 +155,15 @@ python chat_with_model.py \
   --load_in_4bit
 ```
 
+In Colab, prefer absolute adapter paths, for example:
+
+```bash
+python /content/my-model/finetune-python/chat_with_model.py \
+  --model_name Qwen/Qwen2.5-Coder-7B-Instruct \
+  --adapter_path /content/my-model/finetune-python/outputs/qwen7b-lora \
+  --load_in_4bit
+```
+
 Inside chat:
 - Type your prompt and press Enter
 - Type `/exit` to quit

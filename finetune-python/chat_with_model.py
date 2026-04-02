@@ -1,8 +1,36 @@
 import argparse
+from pathlib import Path
 
 import torch
 from peft import PeftModel
 from transformers import AutoModelForCausalLM, AutoTokenizer, BitsAndBytesConfig
+
+
+def resolve_adapter_path(adapter_path: str | None) -> str | None:
+    if not adapter_path:
+        return None
+
+    raw = Path(adapter_path)
+    candidates = []
+
+    if raw.is_absolute():
+        candidates.append(raw)
+    else:
+        # Try caller cwd first, then relative to this script directory.
+        candidates.append(Path.cwd() / raw)
+        candidates.append(Path(__file__).resolve().parent / raw)
+
+    for p in candidates:
+        adapter_config = p / "adapter_config.json"
+        if p.exists() and p.is_dir() and adapter_config.exists():
+            return str(p.resolve())
+
+    checked = ", ".join(str(p.resolve()) for p in candidates)
+    raise FileNotFoundError(
+        "Could not find a local LoRA adapter directory with adapter_config.json. "
+        f"Checked: {checked}. "
+        "Tip: pass an absolute path like /content/my-model/finetune-python/outputs/qwen7b-lora"
+    )
 
 
 def load_model_and_tokenizer(model_name: str, adapter_path: str | None, load_in_4bit: bool):
@@ -99,10 +127,11 @@ def parse_args():
 
 def main():
     args = parse_args()
+    resolved_adapter = resolve_adapter_path(args.adapter_path)
 
     model, tokenizer = load_model_and_tokenizer(
         model_name=args.model_name,
-        adapter_path=args.adapter_path,
+        adapter_path=resolved_adapter,
         load_in_4bit=args.load_in_4bit,
     )
 
